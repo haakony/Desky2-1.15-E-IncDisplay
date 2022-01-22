@@ -1,0 +1,161 @@
+
+//JSON output format
+{
+    "data": {
+        "line1": "Updated:2022-01.22 09:38"
+    },
+    "stock": {
+        "line1": "NTEL:24.5",
+        "line2": "L-High:24.5-24.5",
+        "line3": "C:353.2M V:218"
+    },
+    "btc": {
+        "line1": "BTC:35.4K",
+        "line2": "H-L:35.1K-39.3K",
+        "line3": "Vo:5.8K"
+    },
+    "youtube": {
+        "line1": "SBS:645",
+        "line2": "Views:33566",
+        "line3": "Youtube videos:38"
+    }
+}
+
+
+
+
+
+//Laravel web
+Route::get('/desky', function () {
+    $ntel=\App\Models\Stocks::where('symbol','NTEL.OL')->first();
+    
+    $return = array();
+    $return["data"]["line1"]='Updated:'.Carbon::now()->format('Y-m.d H:i');
+
+    $return["stock"]["line1"]='NTEL:'.$ntel->regularMarketPrice;
+    $return["stock"]["line2"]='L-High:'.$ntel->regularMarketDayLow.'-'.$ntel->regularMarketDayHigh;
+    $return["stock"]["line3"]='C:'.\App\Providers\Helper::bd_nice_number($ntel->marketCap).' V:'.$ntel->regularMarketVolume;//\App\Providers\Helper::bd_nice_number($ntel->regularMarketVolume);
+    
+    $return["btc"]["line1"]="BTC:".\App\Providers\Helper::bd_nice_number(Cache::get('btc_')->last);
+    $return["btc"]["line2"] = "H-L:".\App\Providers\Helper::bd_nice_number(Cache::get('btc_')->low).'-'.\App\Providers\Helper::bd_nice_number(Cache::get('btc_')->high);
+    $return["btc"]["line3"]="Vo:".\App\Providers\Helper::bd_nice_number(Cache::get('btc_')->volume);
+    
+    $return["youtube"]["line1"] = "SBS:".Cache::get('YouTube_')->items[0]->statistics->subscriberCount;
+    $return["youtube"]["line2"] = "Views:".Cache::get('YouTube_')->items[0]->statistics->viewCount;
+    $return["youtube"]["line3"] = "Youtube videos:".Cache::get('YouTube_')->items[0]->statistics->videoCount;
+ 
+    return response($return, 200)->header('Content-Length', '1024');
+});
+
+
+
+
+
+
+
+
+
+//BTC
+
+ /**
+     * Execute the job.
+     *
+     * @return void
+     */
+    public function handle()
+    {
+        $currency_pair = 'btcusd';
+        /*
+        if (Cache::has('bitstamp_' . $currency_pair)) {
+            return Cache::get('bitstamp_' . $currency_pair);
+        } else {
+            */
+            $BTCLink = 'https://www.bitstamp.net/api/v2/ticker/' . $currency_pair . '/';
+            $client = new Client();
+            $response = $client->request('GET', $BTCLink);
+            $result = json_decode($response->getBody());
+            Cache::forget('btc_');
+            Cache::add('btc_', $result, null);
+            //return $result;
+           
+       // }
+    }
+
+
+//Youtube
+/**
+     * Execute the job.
+     *
+     * @return void
+     */
+    public function handle()
+    {
+        
+            $link = 'https://www.googleapis.com/youtube/v3/channels?part=statistics&id=ID&key=KEY';
+            $client = new Client();
+            $response = $client->request('GET', $link);
+            $result = json_decode($response->getBody());
+            Cache::forget('YouTube_');
+            Cache::add('YouTube_', $result, null);
+            $ret= $result;
+           
+        //dd($ret->items[0]->statistics->viewCount); //subscriberCount //videoCount
+    }
+
+
+
+//stocks example with database
+    /**
+     * Execute the job.
+     *
+     * @return void
+     */
+    public function handle()
+    {
+        $curl = curl_init();
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL => "https://yfapi.net/v7/finance/options/NTEL.OL",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => "GET",
+            CURLOPT_HTTPHEADER => [
+                "x-api-key: KEY"
+            ],
+        ]);
+
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
+
+        curl_close($curl);
+
+        if ($err) {
+            echo "cURL Error #:" . $err;
+        } else {
+            echo PHP_EOL;
+            $res= json_decode($response, true);
+            echo $res['optionChain']['result'][0]['quote']['regularMarketPrice'];
+            echo PHP_EOL;
+
+            Stocks::updateOrCreate(
+                ['symbol'=> $res['optionChain']['result'][0]['quote']['symbol']],
+                ['symbol'=> $res['optionChain']['result'][0]['quote']['symbol'],
+                'regularMarketPrice'=> $res['optionChain']['result'][0]['quote']['regularMarketPrice'],
+                'regularMarketDayHigh'=> $res['optionChain']['result'][0]['quote']['regularMarketDayHigh'],
+                'regularMarketDayLow'=> $res['optionChain']['result'][0]['quote']['regularMarketDayLow'],
+                'regularMarketVolume'=> $res['optionChain']['result'][0]['quote']['regularMarketVolume'],
+                'marketCap'=> $res['optionChain']['result'][0]['quote']['marketCap'],
+                'quote'=> serialize($res['optionChain']['result'][0]['quote']),
+                ]
+
+            );
+
+
+        }
+    }
+
+
