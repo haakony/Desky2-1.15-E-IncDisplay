@@ -35,9 +35,10 @@ String ytLine1 = "YT";
 String ytLine2;
 String ytLine3;
 bool onpower = true;
-int screenNr=1;
-int screenNrs=3;
-bool firstLoop=true;
+int screenNr = 1;
+int screenNrs = 4;
+bool firstLoop = true;
+int loopNr = 1;
 
 //btn
 const int PushButton = 39;
@@ -50,7 +51,9 @@ float voltage;
 //timer
 unsigned long updateScrn = 0;
 unsigned long lastupdateScrn = 0;
-
+int screenUpdateTime = 3600000; //how often to update screen when on power
+int screenUpdateTime2;
+int rollingScreenTime = 300000;
 
 WiFiMulti WiFiMulti;
 
@@ -66,7 +69,7 @@ RTC_DATA_ATTR int bootCount = 0;
 GxEPD2_BW<GxEPD2_213_B74, GxEPD2_213_B74::HEIGHT> display(GxEPD2_213_B74(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEM0213B74
 
 
-
+//setup
 void setup()
 {
   Serial.begin(115200);
@@ -82,7 +85,7 @@ void setup()
     Serial.flush();
     delay(1000);
   }
-
+  screenUpdateTime2 = screenUpdateTime;
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP("name", "pass");
 
@@ -110,16 +113,16 @@ void loop()
   //batterycalk
   rawVoltValue = analogRead(ADC_PIN);
   voltage = (rawVoltValue / 4095.0) * 7.26;
-if(firstLoop){
-  runWifiAndGetJSON();
-  screenchoice();
-  firstLoop = false;
-}
+  if (firstLoop) {
+    runWifiAndGetJSON();
+    screenchoice();
+    firstLoop = false;
+  }
 
 
 
 
-  if ( millis() - lastupdateScrn > 3600000)
+  if ( millis() - lastupdateScrn > screenUpdateTime)
   {
     lastupdateScrn = millis();
     //do somthing
@@ -138,7 +141,15 @@ if(firstLoop){
     //Serial.println("btn high");
   } else {
     Serial.println("btn low");
-    if(screenNr==1){ screenNr=2; }else if(screenNr==2){ screenNr=3;}else if(screenNr==3){ screenNr=1; }
+    if (screenNr == 1) {
+      screenNr = 2;
+    } else if (screenNr == 2) {
+      screenNr = 3;
+    } else if (screenNr == 3) {
+      screenNr = 4;
+    } else if (screenNr == 4) {
+      screenNr = 1;
+    }
     Serial.println("srn=");
     Serial.println(screenNr);
     screenchoice();
@@ -168,13 +179,30 @@ if(firstLoop){
 void screenchoice() {
   if (screenNr == 1) {
     stockScreen();
-  } 
+  }
   if (screenNr == 2) {
     CryptoScreen();
   }
   if (screenNr == 3) {
     YouTubeScreen();
-  } 
+  }
+
+  if (screenNr == 4) {
+    screenUpdateTime = rollingScreenTime;
+    if (loopNr == 1) {
+      stockScreen();
+      loopNr++;
+    }else if (loopNr == 2) {
+      CryptoScreen();
+      loopNr++;
+    }else if (loopNr == 3) {
+      YouTubeScreen();
+      loopNr = 1;
+    }
+     Serial.println("Loop nr " + loopNr);
+  }else{
+    screenUpdateTime = screenUpdateTime2;
+  }
 }
 
 
@@ -184,6 +212,7 @@ void CryptoScreen() {
   const char* name = "FreeMonoBold12pt7b";
   const GFXfont* f = &FreeMonoBold12pt7b;
   const GFXfont* f2 = &FreeMonoBold9pt7b;
+  const GFXfont* f18 = &FreeMonoBold18pt7b;
   const GFXfont* f3 = &FreeMonoBold24pt7b;
 
 
@@ -198,7 +227,7 @@ void CryptoScreen() {
 
   display.setCursor(x, y + 10);
   //display.setCursor(x , y + 10);
-  display.setFont(f3);
+  display.setFont(f18);
   display.print(btcLine1);
   display.setFont(f);
   display.println();
@@ -232,8 +261,9 @@ void stockScreen() {
   const char* name = "FreeMonoBold12pt7b";
   const GFXfont* f = &FreeMonoBold12pt7b;
   const GFXfont* f2 = &FreeMonoBold9pt7b;
+  const GFXfont* f18 = &FreeMonoBold18pt7b;
   const GFXfont* f3 = &FreeMonoBold24pt7b;
-  
+
   display.setRotation(1);
   display.fillScreen(GxEPD_WHITE);
   display.setTextColor(GxEPD_BLACK);
@@ -241,7 +271,7 @@ void stockScreen() {
   uint16_t y = 20;//display.height() / 2;   // Vertical
   display.setCursor(x, y + 10);
   //display.setCursor(x , y + 10);
-  display.setFont(f3);
+  display.setFont(f18);
   display.print(stockLine1);
   display.setFont(f);
   display.println();
@@ -271,7 +301,7 @@ void YouTubeScreen() {
   const GFXfont* f = &FreeMonoBold12pt7b;
   const GFXfont* f2 = &FreeMonoBold9pt7b;
   const GFXfont* f3 = &FreeMonoBold24pt7b;
-  
+
   display.setRotation(1);
   display.fillScreen(GxEPD_WHITE);
   display.setTextColor(GxEPD_BLACK);
@@ -345,11 +375,11 @@ void runWifiAndGetJSON() {
 
         //Serial.println(const char* name = doc["name"];);
         line1Data = doc["data"]["line1"].as<String>();
-        
+
         stockLine1 = doc["stock"]["line1"].as<String>();
         stockLine2 = doc["stock"]["line2"].as<String>();
         stockLine3 = doc["stock"]["line3"].as<String>();
-        
+
         btcLine1 = doc["btc"]["line1"].as<String>();
         btcLine2 = doc["btc"]["line2"].as<String>();
         btcLine3 = doc["btc"]["line3"].as<String>();
