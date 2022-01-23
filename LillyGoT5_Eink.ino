@@ -168,7 +168,7 @@ void loop()
 
   //sleep cycle
   //delay(500);
-  if (voltPerc > 50.00)
+  if (voltPerc < float(50))
   {
     onpower = false;
     screenchoice();
@@ -246,9 +246,14 @@ void CryptoScreen()
 
   //Printing all the data on the display
 
-  display.setCursor(x, y + 10);
-  //display.setCursor(x , y + 10);
+  display.drawBitmap(x, y - 20, epd_bitmap_bitcoin_PNG48, 64, 64, BLACK);
+  //display.setCursor(x, y + 30);
+  display.setCursor(x + 64, y);
   display.setFont(f18);
+  display.print("BitCoin");
+  //display.setCursor(x+64 , y-30);
+  display.println();
+  display.setCursor(x + 64, y + 32);
   display.print(btcLine1);
   display.setFont(f);
   display.println();
@@ -265,8 +270,8 @@ void CryptoScreen()
   display.setCursor(x + 200, y + 100);
   //display.print(String(voltage));
 
-  display.print("B");
-  display.print(String(voltPerc));
+  display.print("Bat:");
+  display.print(String(int(voltPerc)));
 
   display.nextPage();
 }
@@ -311,8 +316,8 @@ void stockScreen()
   display.setCursor(x + 200, y + 100);
   //display.print(String(voltage));
 
-  display.print("B");
-  display.print(String(voltPerc));
+  display.print("Bat:");
+  display.print(String(int(voltPerc)));
 
   display.nextPage();
 }
@@ -324,6 +329,7 @@ void YouTubeScreen()
   const char *name = "FreeMonoBold12pt7b";
   const GFXfont *f = &FreeMonoBold12pt7b;
   const GFXfont *f2 = &FreeMonoBold9pt7b;
+  const GFXfont *f18 = &FreeMonoBold18pt7b;
   const GFXfont *f3 = &FreeMonoBold24pt7b;
 
   display.setRotation(1);
@@ -331,17 +337,20 @@ void YouTubeScreen()
   display.setTextColor(GxEPD_BLACK);
   uint16_t x = 2;  //display.width() / 2 -60; // horizen
   uint16_t y = 20; //display.height() / 2;   // Vertical
-  display.setCursor(x, y + 10);
-  //display.setCursor(x , y + 10);
-  display.setFont(f3);
+  display.drawBitmap(x, y - 20, epd_bitmap_youtube, 64, 64, BLACK);
+  //display.setCursor(x, y + 30);
+  display.setCursor(x + 64, y);
+  display.setFont(f18);
+  display.print("YouTube");
+  //display.setCursor(x+64 , y-30);
+  display.println();
+  display.setCursor(x + 64, y + 32);
   display.print(ytLine1);
   display.setFont(f);
   display.println();
   display.print(ytLine2);
   display.println();
   display.print(ytLine3);
-  display.println();
-  display.print("MountainSurfer");
 
   //dataline / battery
   display.setFont();
@@ -352,8 +361,8 @@ void YouTubeScreen()
   display.setCursor(x + 200, y + 100);
   //display.print(String(voltage));
 
-  display.print("B");
-  display.print(String(voltPerc));
+  display.print("Bat:");
+  display.print(String(int(voltPerc)));
 
   display.nextPage();
 }
@@ -364,7 +373,6 @@ void batteryIndicator()
   //batterycalk
   rawVoltValue = analogRead(ADC_PIN);
   voltage = (rawVoltValue / 4095.0) * 7.26;
-
   voltPerc = map(voltage, 3.6, 4.2, 0, 100);
 }
 
